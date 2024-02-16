@@ -15,6 +15,7 @@ class CvController extends Controller
 {
     public function index(){
         $id = auth()->user()->id ;
+       
         $candidate = ModelsCandidate::where( 'user_id' ,$id)->firstOrFail() ; 
         $cv = Cv::where( 'candidate_id' ,$candidate->id)->firstOrFail() ; 
         $experience = Experience::where( 'cv_id' ,$cv->id)->firstOrFail();
@@ -32,5 +33,4 @@ class CvController extends Controller
         $pdf = Pdf::loadView('cv' ,  ['cv'=>$cv , 'experience'=>$experience , 'cursus'=>$cursus , 'language'=>$language , 'candidate'=>$candidate]);
         return $pdf->download('cv.pdf');    
     }
-    
 }

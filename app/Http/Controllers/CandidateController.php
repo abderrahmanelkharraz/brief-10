@@ -2,55 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cv;
-use App\Models\User;
-use App\Models\Cursus;
-use App\Models\Language;
 use App\Models\Candidate;
+use App\Models\Cursus;
+use App\Models\Cv;
 use App\Models\Experience;
+use App\Models\Language;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Spatie\Newsletter\Facades\Newsletter;
-
-use function PHPUnit\Framework\countOf;
 
 class CandidateController extends Controller
 {
     public function index(){
         $id = auth()->user()->id;
-        $data = Candidate::where('user_id' , $id)->get();
-        if(count($data)>0){
-            $cv = Cv::where('candidate_id' , $data[0]->id)->first();
-            return view('candidate' , ['data'=>$data , 'cv'=>$cv]);
-        }else{
-
-            return view('candidate');
+        $data = Candidate::where('user_id' , $id)->first();
+        if($data){
+            return view('candidate' , ['data'=>$data]);
         }
+        return view('candidate');
     }
-    public function subscribe(Request $request)
-    {  
-        if(!Newsletter::isSubscribed($request->email)){
-         Newsletter::subscribe($request->email);
-     }
-     return redirect()->back();
-    }
-
-    public function DeleteCv(Request $request){
-        $id = $request->cv_id;
-        $cv = Cv::where('id' , $id)->first();
-        if($cv){
-            $cv->delete();
-            $token = 0 ;
-            $this->update_Cv_token($token);
-        }
-        return $this->index();
-    }
-    public function update_Cv_token($token){
+    public function update_Cv_token(){
         $id = auth()->user()->id;
-        User::where('id', $id)->update(['hasCv' => $token]);
+        User::where('id', $id)->update(['hasCv' => 1]);
     }
     public function store(Request $request)
     {
-        $request->validate([
+        $formfields = $request->validate([
             'user_id'=> ['required'],
             'email' => ['required'],
             'name' => ['required'],
@@ -61,22 +37,7 @@ class CandidateController extends Controller
             'address' => ['required', 'string'] , 
             'about' => ['required', 'string'] , 
         ]);
-        $photo = time().'.'.$request->photo->extension(); 
-        $request->photo->move(public_path('images'), $photo);
-
-        $candidate = Candidate::create(
-            [
-                'user_id'=> $request->user_id,
-                'email' => $request->email,
-                'name' => $request->name,
-                'photo' => $photo,
-                'titre' => $request->titre,
-                'current_position' => $request->current_position,
-                'industry' => $request->industry , 
-                'address' =>$request->address , 
-                'about' => $request->about , 
-            ]
-        );
+        $candidate = Candidate::create($formfields);
         $update = new EnterpriseController() ; 
         $update->update_token();
         return to_route('profile.candidate');
@@ -87,20 +48,10 @@ class CandidateController extends Controller
     $userId = auth()->user()->id;
     $candidate = Candidate::where('user_id' , $userId)->first();
 
-    $photo = time().'.'.$request->cvphoto->extension(); 
-    $request->cvphoto->move(public_path('images'), $photo);
-    
-    $request->validate([
-        'name'=> ['required' ,'string'],
-        'email' => ['required'],
-        'name' => ['required','string'],
-        'skills' => ['required', 'string'],
-    ]);
-
     $cv = Cv::create([
         'name' =>$request->name ,
         'email' => $request->email ,
-        'photo' =>$photo ,
+        'photo' =>$request->photo ,
         'skills' => $request->input('skills'),
         'candidate_id' => $candidate->id]);
 
@@ -136,8 +87,7 @@ class CandidateController extends Controller
         'cv_id' => $cv->id,
     ]);
     // }
-    $token = 1 ;
-       $this->update_Cv_token($token);
-       return to_route('profile.candidate');
+       $this->update_Cv_token();
+       $this->index();
     }
 }
